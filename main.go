@@ -1,61 +1,78 @@
 package main
 
 import (
+	"flag"
+	"fmt"
 	"github.com/kardianos/service"
 	"log"
-	"os"
-	"time"
+	"program"
 )
 
-var logger service.Logger
+var (
+	Action             string
+	DebugMode          *bool
+	logger             service.Logger
+	ServiceName        string = "gdaemon"
+	ServiceDisplayName string = "golang daemon"
+	ServiceDescription string = "One Golang Daemon Process"
+)
 
-type program struct{}
-
-func (p *program) Start(s service.Service) error {
-	go p.run()
-	return nil
+func PrintDefaultHelp() bool {
+	fmt.Println("")
+	flag.Usage()
+	fmt.Println("")
+	return true
 }
-func (p *program) run() {
-	for {
-		time.Sleep(60 * time.Second)
-		logger.Info("sservice running ")
+
+func CommonAction(s_p *service.Service) bool {
+	flag := true
+	if Action == "" {
+		flag = PrintDefaultHelp()
 	}
-}
-func (p *program) Stop(s service.Service) error {
-	return nil
+	s := *s_p
+	logger, _ = s.Logger(nil)
+	if Action != "" {
+		if Action == "install" {
+			s.Install()
+			logger.Infof("service %s installed ok", ServiceName)
+		} else if Action == "uninstall" {
+			s.Stop()
+			s.Uninstall()
+			logger.Infof("service %s removed done", ServiceName)
+		} else if Action == "stop" {
+			err := s.Stop()
+			if err != nil {
+				logger.Error(err)
+			}
+			logger.Infof("service %s stopped ", ServiceName)
+		} else if Action == "start" {
+			err := s.Run()
+			if err != nil {
+				logger.Error(err)
+			}
+		} else {
+			flag = PrintDefaultHelp()
+		}
+	}
+	return flag
 }
 
 func main() {
+	flag.StringVar(&Action, "a", "", "action to do <install,uninstall,start,stop>")
+	DebugMode = flag.Bool("d", false, "run as debug mode")
+	flag.Parse()
 	svcConfig := &service.Config{
-		Name:        "sservice",
-		DisplayName: "Go Service Example",
-		Description: "This is an example Go service.",
+		Name:        ServiceName,
+		DisplayName: ServiceDisplayName,
+		Description: ServiceDescription,
+		Arguments:   []string{"-a", "start"},
 	}
 
-	prg := &program{}
+	prg := &program.PObj{}
 	s, err := service.New(prg, svcConfig)
-	logger, err = s.Logger(nil)
-	if len(os.Args) > 1 {
-		if os.Args[1] == "install" {
-			s.Install()
-			logger.Info("installed ok")
-			return
-		}
-		if os.Args[1] == "remove" {
-			s.Uninstall()
-			logger.Info("remove ok")
-			return
-		}
-	}
-
 	if err != nil {
 		log.Fatal(err)
 	}
-	if err != nil {
-		log.Fatal(err)
-	}
-	err = s.Run()
-	if err != nil {
-		logger.Error(err)
-	}
+	program.PService = &s
+	CommonAction(&s)
 }
