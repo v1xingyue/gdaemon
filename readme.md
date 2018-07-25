@@ -27,7 +27,7 @@ $ systemctl daemon-reload
 ```
 ###### 注：删除服务之前需要先stop,否则会造成残留信息
 
-### build.sh 封装完成了常见的打包操作:
+## build.sh 封装完成了常见的打包操作:
 
 * 默认打包:
 
